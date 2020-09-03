@@ -50,26 +50,10 @@ def change_current_menu(menu_key):
     Change the global variable for the current menu
     """
     global current_menu
+    if menu_key == 'EXIT_MENU':
+        menu_store['EXIT_MENU'].most_recent_menu_key = current_menu.path
     current_menu = menu_store[menu_key]
     # print(current_menu)
-
-
-# def print_current_menu():
-#     """
-#     Print current menu
-#     Used for going back from ExitMenu as it's printed and doesn't change the current menu
-#     """
-#     print(current_menu)
-
-
-# def back(path):
-#     """
-#     Define 'go back' menu
-#     """
-#     if path != ROOT_DIRECTORY:
-#         return {"back": MenuStore[path[:path.rindex("/")]]}
-#     elif path == ROOT_DIRECTORY:
-#         return {"back": MenuStore["ROOT"]}
 
 
 class Menu:
@@ -92,9 +76,13 @@ class Menu:
         self.title = title
         self.subtitle = subtitle
         self.description = description
-        self.options = options
         self.parent = parent
         self.path = path
+
+        if self.assertTrue(issubclass(ExitMenu, Menu)):
+            options_count = max((t[0] for t in options.keys()))
+            options[(int(options_count) + 1, 'GO_BACK')] = change_current_menu
+        self.options = options
 
     def __len__(self):
         return len(self.options)
@@ -118,20 +106,25 @@ class Menu:
         select : int
             Integer from user selection
         """
-        if select == 99:
-            # figure out what to do with the exit screen
-            menu_store['EXIT_MENU'].most_recent_menu_key = current_menu
-            change_current_menu('EXIT_MENU')
+        # if select == 99:
+        #     # figure out what to do with the exit screen
+        #     menu_store['EXIT_MENU'].most_recent_menu_key = current_menu
+        #     change_current_menu('EXIT_MENU')
 
         for key, value in self.options.items():
             if select == key[0]:
                 selected_function = self.options[(key[0], key[1])]
                 selected_text = key[1]
-                # print(selected_function, selected_text)
+                print(selected_function, selected_text)
+
                 if type(selected_function) == str:
                     change_current_menu(f"{self.path}/{selected_function}")
+                elif key[1] == 'GO_BACK':   # and selected_function == change_current_menu:
+                    change_current_menu(self.parent)
                 elif selected_function == change_project:
-                    change_project(key[1])
+                    change_project(selected_text)
+                elif selected_function == ExitMenu.go_back_exit:
+                    change_current_menu(menu_store['EXIT_MENU'].most_recent_menu_key)
                 else:
                     selected_function()
         # else:
@@ -152,7 +145,7 @@ class ProjectMenu(Menu):
             print("No projects found. Please add them and restart the program.")
             sys.exit()
 
-        super().__init__(parent="PROJECT_MENU", path="PROJECT_MENU", options=projects, title=_title,
+        super().__init__(parent="EXIT_MENU", path="PROJECT_MENU", options=projects, title=_title,
                          description=_description)
 
 
@@ -165,7 +158,7 @@ class ExitMenu(Menu):
         _title = "Are you sure you want to exit?"
         yes_no = {(1, 'yes'): sys.exit, (2, 'no'): self.go_back_exit}
 
-        super().__init__(parent="EXIT_MENU", path="EXIT_MENU", options=yes_no, title=_title)
+        super().__init__(parent="END", path="EXIT_MENU", options=yes_no, title=_title)
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
@@ -334,7 +327,7 @@ def generate_menus():
             if root != ROOT_DIRECTORY:
                 folder_parent = root[:root.rindex("/")]
             else:
-                folder_parent = 'ROOT'
+                folder_parent = 'PROJECT_MENU'
 
             menu_store[root] = Menu(parent=folder_parent, path=root, options=folder_options,
                                         title=folder_search_results["Title:"],
